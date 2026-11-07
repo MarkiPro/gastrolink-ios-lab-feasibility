@@ -94,7 +94,8 @@ jobs:
             -project GastroLinkIosLab.xcodeproj \
             -scheme GastroLinkIosLab \
             -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -sdk iphonesimulator \
+            -arch arm64 \
             -derivedDataPath "$GITHUB_WORKSPACE/.ci-ios-lab-derived-data" \
             CODE_SIGNING_ALLOWED=NO \
             ENABLE_USER_SCRIPT_SANDBOXING=NO \
