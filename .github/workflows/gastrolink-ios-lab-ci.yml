@@ -40,8 +40,30 @@ jobs:
           set -euo pipefail
           xcodebuild -version
           java -version
-          test -d "${ANDROID_HOME:?Android SDK not configured}"
-          test -d "$ANDROID_HOME/platforms/android-37"
+          # API 37 is distributed as android-37.0 on current hosted macOS images.
+          # AGP compileSdk = 37 may still look up the legacy android-37 path.
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
+          if [[ ! -d "$sdk_root" ]]; then
+            echo "::error::Android SDK root is missing: $sdk_root"
+            exit 1
+          fi
+          echo "Android SDK root: $sdk_root"
+          ls -d "$sdk_root"/platforms/android-37* || true
+          if [[ ! -f "$sdk_root/platforms/android-37/android.jar" ]]; then
+            if [[ ! -f "$sdk_root/platforms/android-37.0/android.jar" ]]; then
+              echo "::error::Android SDK API 37/37.0 platform is not installed"
+              exit 1
+            fi
+            if [[ -e "$sdk_root/platforms/android-37" || -L "$sdk_root/platforms/android-37" ]]; then
+              echo "::error::Existing android-37 path is unusable; refusing to replace it"
+              exit 1
+            fi
+            ln -s android-37.0 "$sdk_root/platforms/android-37"
+            echo "Created runner-only android-37 compatibility symlink"
+          fi
+          test -f "$sdk_root/platforms/android-37/android.jar"
+          echo "ANDROID_HOME=$sdk_root" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk_root" >> "$GITHUB_ENV"
           df -h .
 
       - name: Install XcodeGen if absent
