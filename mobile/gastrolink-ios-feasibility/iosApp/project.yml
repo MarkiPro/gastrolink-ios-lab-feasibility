@@ -1,0 +1,39 @@
+name: GastroLinkIosLab
+options:
+  bundleIdPrefix: com.gastrolink.ui
+  deploymentTarget:
+    iOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    FRAMEWORK_SEARCH_PATHS: "$(inherited) $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)"
+    OTHER_LDFLAGS: "$(inherited) -framework GastroLinkIOSLab"
+    LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+targets:
+  GastroLinkIosLab:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: GastroLink iOS UI Lab
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gastrolink.ui.ioslab.feasibility
+        # Simulator only by default; device deployment requires intentional signing.
+        CODE_SIGNING_ALLOWED: "NO"
+    preBuildScripts:
+      - name: Build isolated Kotlin framework
+        basedOnDependencyAnalysis: false
+        script: |
+          set -e
+          if [ "${OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED:-NO}" = "YES" ]; then
+            exit 0
+          fi
+          cd "$SRCROOT/.."
+          bash "$SRCROOT/../../kellner-pocket-runtime/gradlew" -p "$SRCROOT/.." :shared:embedAndSignAppleFrameworkForXcode --no-daemon
