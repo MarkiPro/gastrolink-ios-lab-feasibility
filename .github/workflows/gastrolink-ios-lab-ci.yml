@@ -110,6 +110,58 @@ jobs:
           test -f "$app/Info.plist"
           /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist"
 
+      # Only verifies boot/install/launch and records a screenshot for human review.
+      # This is not an automated visual, interaction or accessibility acceptance test.
+      - name: Boot iPhone 16 Pro and capture first-launch screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$GITHUB_WORKSPACE/.ci-ios-lab-derived-data/Build/Products/Debug-iphonesimulator/GastroLinkIosLab.app"
+          test -d "$app"
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          if [[ "$bundle_id" != 'com.gastrolink.ui.ioslab.feasibility' ]]; then
+            echo "::error::Unexpected Lab bundle ID: $bundle_id"
+            exit 1
+          fi
+          # Pin the runtime/device to the documented Xcode 16.4 image.
+          # Do not silently substitute a different iOS version or device.
+          xcrun simctl list devices available
+          udid="$(xcrun simctl list -j devices available | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin).get("devices", {})
+          for runtime, entries in devices.items():
+              if runtime.endswith(".iOS-18-5"):
+                  for entry in entries:
+                      if entry.get("name") == "iPhone 16 Pro" and entry.get("isAvailable", True):
+                          print(entry["udid"])
+                          sys.exit(0)
+          sys.exit("Required iOS 18.5 iPhone 16 Pro simulator is not available")
+          ')"
+          test -n "$udid"
+          echo "Simulator under test: $udid (iOS 18.5, iPhone 16 Pro)"
+          trap 'xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true' EXIT
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl launch "$udid" "$bundle_id"
+          sleep 5
+          evidence="$GITHUB_WORKSPACE/.ci-ios-lab-evidence"
+          mkdir -p "$evidence"
+          screenshot="$evidence/ios18-5-iphone16pro-first-launch.png"
+          xcrun simctl io "$udid" screenshot "$screenshot"
+          test -s "$screenshot"
+          sips -g pixelWidth -g pixelHeight "$screenshot"
+          echo 'Simulator launch command and screenshot capture passed; visual and device acceptance remain pending.'
+
+      - name: Upload iPhone simulator smoke screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gastrolink-ios-lab-iphone16pro-smoke
+          path: .ci-ios-lab-evidence/ios18-5-iphone16pro-first-launch.png
+          if-no-files-found: warn
+          retention-days: 3
+
       - name: Upload unsigned Simulator-only Lab
         if: success()
         uses: actions/upload-artifact@v4
