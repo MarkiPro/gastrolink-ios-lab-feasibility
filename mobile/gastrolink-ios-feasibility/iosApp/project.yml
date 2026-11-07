@@ -24,6 +24,10 @@ targets:
         UILaunchScreen: {}
     settings:
       base:
+        # Keep the Swift application module distinct from the imported Kotlin
+        # framework GastroLinkIOSLab (a case-only name difference can collide).
+        # Preserve the target, bundle ID, scheme, and GastroLinkIosLab.app name.
+        PRODUCT_MODULE_NAME: GastroLinkIosLabHost
         PRODUCT_BUNDLE_IDENTIFIER: com.gastrolink.ui.ioslab.feasibility
         # Simulator only by default; device deployment requires intentional signing.
         CODE_SIGNING_ALLOWED: "NO"
